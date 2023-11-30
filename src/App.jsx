@@ -1,8 +1,39 @@
 import { useRef, useReducer } from "react";
+import { RoomProvider, useStorage, useMutation } from "../liveblocks.config";
+import { ClientSideSuspense } from "@liveblocks/react";
+import { LiveList } from "@liveblocks/client";
 
-function App() {
+export default function App() {
+  return (
+    <RoomProvider id="my-room-3" initialPresence={{}} initialStorage={{
+      lines: new LiveList()
+    }}>
+      <ClientSideSuspense fallback={<div>Loading…</div>}>
+        {() => <Room />}
+      </ClientSideSuspense>
+    </RoomProvider>
+  )
+}
+
+function Room() {
   const ref = useRef();
   const [, rerender] = useReducer(() => []);
+  const liveLines = useStorage(root => root.lines)
+
+  const updateLiveLines = useMutation(({ storage }, updatedLine) => {
+    const liveLines = storage.get("lines");
+  
+    const existingLineIndex = liveLines.findIndex(s => s.id === updatedLine.id);
+  
+    if (existingLineIndex !== -1) {
+      // Remplacer l'élément existant par le nouvel élément
+      liveLines.delete(existingLineIndex);
+      liveLines.insert(existingLineIndex, updatedLine);
+    } else {
+      // Ajouter la nouvelle ligne
+      liveLines.push(updatedLine);
+    }
+  }, []);
 
   const lines = useRef([]);
   const currentLine = useRef(null);
@@ -11,8 +42,10 @@ function App() {
     e.preventDefault();
     const canvas = ref.current;
     const rect = canvas.getBoundingClientRect();
+    
     currentLine.current = {
       color: "black",
+      id: Math.random(),
       coordinates: [
         {
           x: e.clientX - rect.left,
@@ -22,6 +55,7 @@ function App() {
     };
 
     lines.current.push(currentLine.current);
+    updateLiveLines(currentLine.current);
   };
 
   const drawLines = () => {
@@ -31,7 +65,7 @@ function App() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    lines.current.forEach((line) => {
+    liveLines.forEach((line) => {
       if (!line.coordinates || line.coordinates.length < 2) return;
       ctx.beginPath();
       ctx.strokeStyle = line.color;
@@ -83,6 +117,7 @@ function App() {
           };
 
           currentLine.current.coordinates.push(coordinate);
+          updateLiveLines(currentLine.current);
           drawLines();
         }}
         onPointerUp={(e) => {
@@ -105,5 +140,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
