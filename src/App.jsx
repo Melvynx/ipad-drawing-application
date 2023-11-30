@@ -12,7 +12,7 @@ export default function App() {
         {() => <Room />}
       </ClientSideSuspense>
     </RoomProvider>
-  );
+  )
 }
 
 function Room() {
